@@ -3,6 +3,8 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboundMessageService } from '../../outbound-message/services/outbound-message.service';
 import { ConversationStateService } from '../services/conversation-state.service';
 import { ConversationState } from '../constants/conversation-state.enum';
+import { AiFaqService } from '../../ai/services/ai-faq.service';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class FaqHandler {
@@ -12,6 +14,8 @@ export class FaqHandler {
     private readonly prisma: PrismaService,
     private readonly stateService: ConversationStateService,
     private readonly outboundService: OutboundMessageService,
+    @Optional()
+    private readonly aiFaqService?: AiFaqService,
   ) {}
 
   async showFaqList(
@@ -173,6 +177,28 @@ export class FaqHandler {
         bestMatch.id,
       );
       return true;
+    }
+
+    // 3. AI FAQ Fallback (feature-flagged)
+    if (this.aiFaqService) {
+      const aiResult = await this.aiFaqService.answerFaq(businessId, query);
+      if (aiResult?.answer) {
+        await this.outboundService.sendButtons(
+          businessId,
+          conversationId,
+          customerId,
+          customerPhone,
+          `🤖 *Answer:*\n\n${aiResult.answer}`,
+          [
+            { id: 'btn_faq', title: '📚 More FAQs' },
+            { id: 'btn_menu', title: '🏠 Main Menu' },
+          ],
+          {
+            footerText: 'AI Powered Assistant',
+          },
+        );
+        return true;
+      }
     }
 
     return false;

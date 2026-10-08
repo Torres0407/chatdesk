@@ -19,6 +19,7 @@ import { FaqsModule } from './modules/faqs/faqs.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { EventsModule } from './modules/events/events.module';
 import { HandoffModule } from './modules/handoff/handoff.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { HandoffModule } from './modules/handoff/handoff.module';
     HealthModule,
     EventsModule,
     HandoffModule,
+    AiModule,
     MetaWebhookModule,
     OutboundMessageModule,
     ConversationEngineModule,

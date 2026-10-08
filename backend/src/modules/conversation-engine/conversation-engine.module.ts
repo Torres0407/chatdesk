@@ -17,6 +17,7 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { forwardRef } from '@nestjs/common';
 import { HandoffModule } from '../handoff/handoff.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HandoffModule } from '../handoff/handoff.module';
     OrdersModule,
     BookingsModule,
     PaymentsModule,
+    AiModule,
     forwardRef(() => HandoffModule),
   ],
   providers: [
