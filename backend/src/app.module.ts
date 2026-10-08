@@ -17,6 +17,8 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { FaqsModule } from './modules/faqs/faqs.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { EventsModule } from './modules/events/events.module';
+import { HandoffModule } from './modules/handoff/handoff.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { SettingsModule } from './modules/settings/settings.module';
     PrismaModule,
     RedisModule,
     HealthModule,
+    EventsModule,
+    HandoffModule,
     MetaWebhookModule,
     OutboundMessageModule,
     ConversationEngineModule,

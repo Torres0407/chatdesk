@@ -14,6 +14,7 @@ describe('ConversationEngineService', () => {
   let mockBookingHandler: any;
   let mockPaymentService: any;
   let mockOutboundService: any;
+  let mockHandoffService: any;
 
   beforeEach(() => {
     mockPrisma = {
@@ -65,6 +66,12 @@ describe('ConversationEngineService', () => {
     mockOutboundService = {
       sendButtons: jest.fn(),
     };
+    mockHandoffService = {
+      evaluateHandoff: jest.fn().mockResolvedValue({ shouldHandoff: false }),
+      executeHandoff: jest.fn().mockResolvedValue(undefined),
+      recordFallbackAndCheckThreshold: jest.fn().mockResolvedValue({ shouldHandoff: false }),
+      resetFallbackCount: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new ConversationEngineService(
       mockPrisma,
@@ -78,6 +85,7 @@ describe('ConversationEngineService', () => {
       mockBookingHandler,
       mockPaymentService,
       mockOutboundService,
+      mockHandoffService,
     );
   });
 
@@ -142,11 +150,13 @@ describe('ConversationEngineService', () => {
       text: { body: 'talk to human' },
     });
 
-    expect(mockGlobalCommandHandler.handleAgentHandoff).toHaveBeenCalledWith(
+    expect(mockHandoffService.executeHandoff).toHaveBeenCalledWith(
       'b1',
       'conv1',
       'c1',
       '+2348012345678',
+      expect.objectContaining({ shouldHandoff: true }),
+      'talk to human',
     );
   });
 

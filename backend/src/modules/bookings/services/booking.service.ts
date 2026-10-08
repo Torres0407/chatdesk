@@ -2,6 +2,8 @@ import { Injectable, Logger, ConflictException, NotFoundException } from '@nestj
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BookingStatus } from '@prisma/client';
 import { OutboundMessageService } from '../../outbound-message/services/outbound-message.service';
+import { EventBusService } from '../../events/services/event-bus.service';
+import { Optional } from '@nestjs/common';
 
 export class DoubleBookingException extends ConflictException {
   constructor(message = 'The selected time slot is already booked. Please choose another time.') {
@@ -23,6 +25,8 @@ export class BookingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outboundService: OutboundMessageService,
+    @Optional()
+    private readonly eventBus?: EventBusService,
   ) {}
 
   async hasOverlap(
@@ -119,6 +123,15 @@ export class BookingService {
       `Created booking id=${booking.id} service="${serviceName}" for business=${businessId}`,
     );
 
+    await this.eventBus?.publishEvent('booking.created', businessId, {
+      bookingId: booking.id,
+      customerId: booking.customerId,
+      serviceName: booking.serviceName,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      status: booking.status,
+    });
+
     return booking;
   }
 
@@ -139,6 +152,12 @@ export class BookingService {
     });
 
     this.logger.log(`Cancelled booking id=${bookingId} for business=${businessId}`);
+
+    await this.eventBus?.publishEvent('booking.updated', businessId, {
+      bookingId: updated.id,
+      previousStatus: booking.status,
+      status: BookingStatus.CANCELLED,
+    });
 
     // Notify customer on WhatsApp if conversation exists
     if (booking.conversationId && booking.customer?.phoneNumber) {
@@ -201,6 +220,13 @@ export class BookingService {
     });
 
     this.logger.log(`Rescheduled booking id=${bookingId} to ${newStartTime.toISOString()}`);
+
+    await this.eventBus?.publishEvent('booking.updated', businessId, {
+      bookingId: updated.id,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      status: BookingStatus.CONFIRMED,
+    });
 
     if (booking.conversationId && booking.customer?.phoneNumber) {
       const formattedDate = new Date(newStartTime).toLocaleDateString('en-US', {

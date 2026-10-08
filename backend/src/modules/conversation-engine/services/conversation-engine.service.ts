@@ -13,6 +13,8 @@ import { OutboundMessageService } from '../../outbound-message/services/outbound
 import { ConversationState } from '../constants/conversation-state.enum';
 import { ConversationStatus } from '@prisma/client';
 import { MetaInboundMessage } from '../../meta-webhook/dto/meta-webhook.dto';
+import { forwardRef, Inject } from '@nestjs/common';
+import { HandoffService } from '../../handoff/services/handoff.service';
 
 @Injectable()
 export class ConversationEngineService {
@@ -30,6 +32,8 @@ export class ConversationEngineService {
     private readonly bookingHandler: BookingHandler,
     private readonly paymentService: PaymentService,
     private readonly outboundService: OutboundMessageService,
+    @Inject(forwardRef(() => HandoffService))
+    private readonly handoffService: HandoffService,
   ) {}
 
   async processInboundMessage(
@@ -112,12 +116,22 @@ export class ConversationEngineService {
       return;
     }
 
-    if (globalCmd === 'AGENT' || buttonOrListId === 'btn_agent' || buttonOrListId === 'menu_agent') {
-      await this.globalCommandHandler.handleAgentHandoff(
+    // 4. Handoff Evaluation (Explicit keyword, button, or high-priority urgency)
+    const handoffDecision = await this.handoffService.evaluateHandoff(
+      businessId,
+      customerId,
+      commandText,
+      buttonOrListId,
+    );
+
+    if (handoffDecision.shouldHandoff || globalCmd === 'AGENT') {
+      await this.handoffService.executeHandoff(
         businessId,
         conversationId,
         customerId,
         customerPhone,
+        handoffDecision.shouldHandoff ? handoffDecision : { shouldHandoff: true, reason: 'KEYWORD', priority: 'NORMAL' },
+        commandText,
       );
       return;
     }
@@ -352,7 +366,28 @@ export class ConversationEngineService {
             customerPhone,
             textContent,
           );
-          if (faqMatched) return;
+          if (faqMatched) {
+            await this.handoffService.resetFallbackCount(businessId, customerId);
+            return;
+          }
+
+          // Check consecutive fallback threshold
+          const fallbackCheck = await this.handoffService.recordFallbackAndCheckThreshold(
+            businessId,
+            customerId,
+          );
+
+          if (fallbackCheck.shouldHandoff) {
+            await this.handoffService.executeHandoff(
+              businessId,
+              conversationId,
+              customerId,
+              customerPhone,
+              fallbackCheck,
+              textContent,
+            );
+            return;
+          }
         }
 
         await this.menuHandler.sendMainMenu(

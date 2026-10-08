@@ -25,8 +25,11 @@ describe('ConversationManagementService', () => {
     mockOutboundService = {
       sendText: jest.fn(),
     };
+    const mockEventBus: any = {
+      publishEvent: jest.fn().mockResolvedValue({}),
+    };
 
-    service = new ConversationManagementService(mockPrisma, mockOutboundService);
+    service = new ConversationManagementService(mockPrisma, mockOutboundService, mockEventBus);
   });
 
   describe('getConversationById', () => {

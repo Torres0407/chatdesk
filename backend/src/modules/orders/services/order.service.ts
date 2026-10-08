@@ -4,6 +4,8 @@ import { CartService } from '../../cart/services/cart.service';
 import { OrderTransitionService } from './order-transition.service';
 import { OutboundMessageService } from '../../outbound-message/services/outbound-message.service';
 import { OrderStatus } from '../constants/order-status.constants';
+import { EventBusService } from '../../events/services/event-bus.service';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class OrderService {
@@ -14,6 +16,8 @@ export class OrderService {
     private readonly cartService: CartService,
     private readonly transitionService: OrderTransitionService,
     private readonly outboundService: OutboundMessageService,
+    @Optional()
+    private readonly eventBus?: EventBusService,
   ) {}
 
   async createOrderFromCart(
@@ -58,6 +62,15 @@ export class OrderService {
     await this.cartService.clearCart(businessId, customerId);
 
     this.logger.log(`Created order ${order.id} for business=${businessId} amount=${order.totalAmount}`);
+
+    await this.eventBus?.publishEvent('order.created', businessId, {
+      orderId: order.id,
+      customerId: order.customerId,
+      totalAmount: order.totalAmount,
+      currency: order.currency,
+      status: order.status,
+    });
+
     return order;
   }
 
@@ -94,6 +107,12 @@ export class OrderService {
     this.logger.log(
       `Order ${orderId} transitioned from ${order.status} to ${targetStatus}`,
     );
+
+    await this.eventBus?.publishEvent('order.updated', businessId, {
+      orderId: updated.id,
+      previousStatus: order.status,
+      status: targetStatus,
+    });
 
     // Notify customer on WhatsApp if conversation exists
     if (notifyCustomer && order.conversationId && order.customer?.phoneNumber) {

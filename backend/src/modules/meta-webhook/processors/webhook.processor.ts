@@ -15,6 +15,7 @@ import { WebhookIdempotencyService } from '../services/webhook-idempotency.servi
 import { maskPhoneNumber } from '../../../common/utils/phone-mask.util';
 import { MessageStatus } from '@prisma/client';
 import { ConversationEngineService } from '../../conversation-engine/services/conversation-engine.service';
+import { EventBusService } from '../../events/services/event-bus.service';
 
 @Processor(META_WEBHOOK_QUEUE)
 export class WebhookProcessor extends WorkerHost {
@@ -24,6 +25,7 @@ export class WebhookProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly idempotencyService: WebhookIdempotencyService,
     private readonly conversationEngine: ConversationEngineService,
+    private readonly eventBus: EventBusService,
   ) {
     super();
   }
@@ -156,7 +158,7 @@ export class WebhookProcessor extends WorkerHost {
     });
 
     // Persist inbound message record
-    await this.prisma.message.create({
+    const savedMessage = await this.prisma.message.create({
       data: {
         businessId,
         conversationId: conversation.id,
@@ -166,6 +168,23 @@ export class WebhookProcessor extends WorkerHost {
         content: message as any,
         status: MessageStatus.RECEIVED,
       },
+    });
+
+    // Emit realtime events for staff dashboard SSE stream
+    await this.eventBus.publishEvent('message.created', businessId, {
+      message: savedMessage,
+      conversationId: conversation.id,
+      customer: {
+        id: customer.id,
+        phoneNumber: customer.phoneNumber,
+        name: customer.name,
+      },
+    });
+
+    await this.eventBus.publishEvent('conversation.updated', businessId, {
+      conversationId: conversation.id,
+      lastCustomerMessageAt: conversation.lastCustomerMessageAt,
+      status: conversation.status,
     });
 
     // Downstream state machine processor triggered
@@ -205,6 +224,12 @@ export class WebhookProcessor extends WorkerHost {
         },
       });
       this.logger.debug(`Updated message ${statusUpdate.id} status to ${newStatus}`);
+
+      await this.eventBus.publishEvent('message.status', businessId, {
+        waMessageId: statusUpdate.id,
+        status: newStatus,
+        timestamp: statusUpdate.timestamp,
+      });
     } catch (err: any) {
       this.logger.warn(`Failed to update message status for ${statusUpdate.id}: ${err.message}`);
     }

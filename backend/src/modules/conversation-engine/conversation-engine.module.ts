@@ -15,6 +15,8 @@ import { CartModule } from '../cart/cart.module';
 import { OrdersModule } from '../orders/orders.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { forwardRef } from '@nestjs/common';
+import { HandoffModule } from '../handoff/handoff.module';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { PaymentsModule } from '../payments/payments.module';
     OrdersModule,
     BookingsModule,
     PaymentsModule,
+    forwardRef(() => HandoffModule),
   ],
   providers: [
     ConversationStateService,

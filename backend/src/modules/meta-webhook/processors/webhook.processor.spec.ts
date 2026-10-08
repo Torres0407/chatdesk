@@ -49,10 +49,15 @@ describe('WebhookProcessor', () => {
       processInboundMessage: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mockEventBus = {
+      publishEvent: jest.fn().mockResolvedValue({}),
+    };
+
     processor = new WebhookProcessor(
       prismaService as PrismaService,
       idempotencyService as unknown as WebhookIdempotencyService,
       mockConversationEngine as any,
+      mockEventBus as any,
     );
   });
 

@@ -10,6 +10,7 @@ import { ConversationStatus } from '@prisma/client';
 import { OutboundMessageService } from '../../outbound-message/services/outbound-message.service';
 import { ConversationQueryDto } from '../dto/conversation-query.dto';
 import { CursorPaginationQueryDto, PaginatedResponseDto } from '../../../common/dto/cursor-pagination.dto';
+import { EventBusService } from '../../events/services/event-bus.service';
 
 @Injectable()
 export class ConversationManagementService {
@@ -18,6 +19,7 @@ export class ConversationManagementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outboundService: OutboundMessageService,
+    private readonly eventBus: EventBusService,
   ) {}
 
   async listConversations(
@@ -128,7 +130,7 @@ export class ConversationManagementService {
   ): Promise<any> {
     const conversation = await this.getConversationById(businessId, conversationId);
 
-    return this.prisma.conversation.update({
+    const updated = await this.prisma.conversation.update({
       where: { id: conversation.id },
       data: {
         status: ConversationStatus.HUMAN_HANDLING,
@@ -136,12 +138,25 @@ export class ConversationManagementService {
       },
       include: { customer: true, assignedStaff: true },
     });
+
+    await this.eventBus.publishEvent('conversation.claimed', businessId, {
+      conversationId: updated.id,
+      staffUserId,
+      assignedStaff: updated.assignedStaff,
+    });
+    await this.eventBus.publishEvent('conversation.updated', businessId, {
+      conversationId: updated.id,
+      status: updated.status,
+      assignedStaffId: staffUserId,
+    });
+
+    return updated;
   }
 
   async handBack(businessId: string, conversationId: string): Promise<any> {
     const conversation = await this.getConversationById(businessId, conversationId);
 
-    return this.prisma.conversation.update({
+    const updated = await this.prisma.conversation.update({
       where: { id: conversation.id },
       data: {
         status: ConversationStatus.BOT,
@@ -149,18 +164,36 @@ export class ConversationManagementService {
       },
       include: { customer: true },
     });
+
+    await this.eventBus.publishEvent('conversation.updated', businessId, {
+      conversationId: updated.id,
+      status: updated.status,
+      assignedStaffId: null,
+    });
+
+    return updated;
   }
 
   async resolve(businessId: string, conversationId: string): Promise<any> {
     const conversation = await this.getConversationById(businessId, conversationId);
 
-    return this.prisma.conversation.update({
+    const updated = await this.prisma.conversation.update({
       where: { id: conversation.id },
       data: {
         status: ConversationStatus.RESOLVED,
       },
       include: { customer: true },
     });
+
+    await this.eventBus.publishEvent('conversation.resolved', businessId, {
+      conversationId: updated.id,
+    });
+    await this.eventBus.publishEvent('conversation.updated', businessId, {
+      conversationId: updated.id,
+      status: updated.status,
+    });
+
+    return updated;
   }
 
   async sendStaffReply(
