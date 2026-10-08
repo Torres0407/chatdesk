@@ -11,6 +11,7 @@ import { ConversationEngineModule } from './modules/conversation-engine/conversa
 import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
     CartModule,
     OrdersModule,
     BookingsModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

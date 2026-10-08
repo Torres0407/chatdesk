@@ -8,6 +8,8 @@ import { CatalogHandler } from '../handlers/catalog.handler';
 import { CartHandler } from '../handlers/cart.handler';
 import { CheckoutHandler } from '../handlers/checkout.handler';
 import { BookingHandler } from '../handlers/booking.handler';
+import { PaymentService } from '../../payments/services/payment.service';
+import { OutboundMessageService } from '../../outbound-message/services/outbound-message.service';
 import { ConversationState } from '../constants/conversation-state.enum';
 import { ConversationStatus } from '@prisma/client';
 import { MetaInboundMessage } from '../../meta-webhook/dto/meta-webhook.dto';
@@ -26,6 +28,8 @@ export class ConversationEngineService {
     private readonly cartHandler: CartHandler,
     private readonly checkoutHandler: CheckoutHandler,
     private readonly bookingHandler: BookingHandler,
+    private readonly paymentService: PaymentService,
+    private readonly outboundService: OutboundMessageService,
   ) {}
 
   async processInboundMessage(
@@ -252,6 +256,29 @@ export class ConversationEngineService {
         conversationId,
         customerId,
         customerPhone,
+      );
+      return;
+    }
+
+    if (buttonOrListId?.startsWith('pay_')) {
+      const orderId = buttonOrListId.replace(/^pay_/, '');
+      const payment = await this.paymentService.generateOrderPaymentLink(
+        businessId,
+        orderId,
+      );
+      await this.outboundService.sendButtons(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+        `💳 *Complete Your Payment*\n\nPlease tap the link below to securely pay via Paystack:\n👉 ${payment.paymentUrl}\n\n_Reference: ${payment.reference}_`,
+        [
+          { id: 'btn_menu', title: '🏠 Main Menu' },
+          { id: 'btn_agent', title: '👤 Talk to Support' },
+        ],
+        {
+          footerText: 'Secured by Paystack',
+        },
       );
       return;
     }

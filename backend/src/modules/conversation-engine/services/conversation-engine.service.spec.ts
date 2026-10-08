@@ -12,6 +12,8 @@ describe('ConversationEngineService', () => {
   let mockCartHandler: any;
   let mockCheckoutHandler: any;
   let mockBookingHandler: any;
+  let mockPaymentService: any;
+  let mockOutboundService: any;
 
   beforeEach(() => {
     mockPrisma = {
@@ -54,6 +56,15 @@ describe('ConversationEngineService', () => {
       handleDateSelection: jest.fn(),
       handleTimeSelection: jest.fn(),
     };
+    mockPaymentService = {
+      generateOrderPaymentLink: jest.fn().mockResolvedValue({
+        paymentUrl: 'https://checkout.paystack.com/mock_pay',
+        reference: 'ref_mock_123',
+      }),
+    };
+    mockOutboundService = {
+      sendButtons: jest.fn(),
+    };
 
     service = new ConversationEngineService(
       mockPrisma,
@@ -65,6 +76,8 @@ describe('ConversationEngineService', () => {
       mockCartHandler,
       mockCheckoutHandler,
       mockBookingHandler,
+      mockPaymentService,
+      mockOutboundService,
     );
   });
 
@@ -189,7 +202,7 @@ describe('ConversationEngineService', () => {
     );
   });
 
-  it('should route to booking date selection when bdate_ is clicked', async () => {
+  it('should route to payment generation when pay_ is clicked', async () => {
     mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', isOptedOut: false });
     mockPrisma.conversation.findUnique.mockResolvedValue({
       id: 'conv1',
@@ -203,16 +216,22 @@ describe('ConversationEngineService', () => {
       type: 'interactive',
       interactive: {
         type: 'button_reply',
-        button_reply: { id: 'bdate_2026-10-10', title: 'Tomorrow' },
+        button_reply: { id: 'pay_ord-123', title: 'Pay Now' },
       },
     });
 
-    expect(mockBookingHandler.handleDateSelection).toHaveBeenCalledWith(
+    expect(mockPaymentService.generateOrderPaymentLink).toHaveBeenCalledWith(
+      'b1',
+      'ord-123',
+    );
+    expect(mockOutboundService.sendButtons).toHaveBeenCalledWith(
       'b1',
       'conv1',
       'c1',
       '+2348012345678',
-      'bdate_2026-10-10',
+      expect.stringContaining('https://checkout.paystack.com/mock_pay'),
+      expect.any(Array),
+      expect.any(Object),
     );
   });
 });

@@ -14,6 +14,7 @@ import { RedisModule } from '../../redis/redis.module';
 import { CartModule } from '../cart/cart.module';
 import { OrdersModule } from '../orders/orders.module';
 import { BookingsModule } from '../bookings/bookings.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { BookingsModule } from '../bookings/bookings.module';
     CartModule,
     OrdersModule,
     BookingsModule,
+    PaymentsModule,
   ],
   providers: [
     ConversationStateService,
