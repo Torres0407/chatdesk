@@ -6,6 +6,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { HealthModule } from './health/health.module';
 import { MetaWebhookModule } from './modules/meta-webhook/meta-webhook.module';
+import { OutboundMessageModule } from './modules/outbound-message/outbound-message.module';
+import { ConversationEngineModule } from './modules/conversation-engine/conversation-engine.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { MetaWebhookModule } from './modules/meta-webhook/meta-webhook.module';
     RedisModule,
     HealthModule,
     MetaWebhookModule,
+    OutboundMessageModule,
+    ConversationEngineModule,
   ],
 })
 export class AppModule {}

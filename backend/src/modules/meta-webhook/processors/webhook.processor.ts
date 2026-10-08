@@ -14,6 +14,7 @@ import {
 import { WebhookIdempotencyService } from '../services/webhook-idempotency.service';
 import { maskPhoneNumber } from '../../../common/utils/phone-mask.util';
 import { MessageStatus } from '@prisma/client';
+import { ConversationEngineService } from '../../conversation-engine/services/conversation-engine.service';
 
 @Processor(META_WEBHOOK_QUEUE)
 export class WebhookProcessor extends WorkerHost {
@@ -22,6 +23,7 @@ export class WebhookProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly idempotencyService: WebhookIdempotencyService,
+    private readonly conversationEngine: ConversationEngineService,
   ) {
     super();
   }
@@ -166,7 +168,15 @@ export class WebhookProcessor extends WorkerHost {
       },
     });
 
-    // Downstream state machine processor will be triggered in Phase 3
+    // Downstream state machine processor triggered
+    await this.conversationEngine.processInboundMessage(
+      businessId,
+      conversation.id,
+      customer.id,
+      customer.phoneNumber,
+      message,
+    );
+
     return true;
   }
 

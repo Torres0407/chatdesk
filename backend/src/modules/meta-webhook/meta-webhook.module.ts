@@ -6,6 +6,7 @@ import { MetaWebhookService } from './services/meta-webhook.service';
 import { WebhookIdempotencyService } from './services/webhook-idempotency.service';
 import { WebhookProcessor } from './processors/webhook.processor';
 import { MetaSignatureGuard } from './guards/meta-signature.guard';
+import { ConversationEngineModule } from '../conversation-engine/conversation-engine.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { MetaSignatureGuard } from './guards/meta-signature.guard';
         name: META_OUTBOUND_QUEUE,
       },
     ),
+    ConversationEngineModule,
   ],
   controllers: [MetaWebhookController],
   providers: [

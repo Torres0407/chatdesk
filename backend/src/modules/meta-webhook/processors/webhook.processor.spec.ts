@@ -45,9 +45,14 @@ describe('WebhookProcessor', () => {
       acquireInboundLock: jest.fn().mockResolvedValue(true),
     };
 
+    const mockConversationEngine = {
+      processInboundMessage: jest.fn().mockResolvedValue(undefined),
+    };
+
     processor = new WebhookProcessor(
       prismaService as PrismaService,
       idempotencyService as unknown as WebhookIdempotencyService,
+      mockConversationEngine as any,
     );
   });
 
