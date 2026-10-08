@@ -7,6 +7,7 @@ import { FaqHandler } from '../handlers/faq.handler';
 import { CatalogHandler } from '../handlers/catalog.handler';
 import { CartHandler } from '../handlers/cart.handler';
 import { CheckoutHandler } from '../handlers/checkout.handler';
+import { BookingHandler } from '../handlers/booking.handler';
 import { ConversationState } from '../constants/conversation-state.enum';
 import { ConversationStatus } from '@prisma/client';
 import { MetaInboundMessage } from '../../meta-webhook/dto/meta-webhook.dto';
@@ -24,6 +25,7 @@ export class ConversationEngineService {
     private readonly catalogHandler: CatalogHandler,
     private readonly cartHandler: CartHandler,
     private readonly checkoutHandler: CheckoutHandler,
+    private readonly bookingHandler: BookingHandler,
   ) {}
 
   async processInboundMessage(
@@ -142,8 +144,50 @@ export class ConversationEngineService {
       return;
     }
 
-    // 4. Catalog, Cart, and Checkout Actions
-    if (buttonOrListId === 'btn_catalog' || buttonOrListId === 'menu_catalog' || commandText.toLowerCase() === 'catalog') {
+    // 4. Booking Flow Actions
+    if (
+      buttonOrListId === 'btn_booking' ||
+      buttonOrListId === 'menu_booking' ||
+      commandText.toLowerCase() === 'book' ||
+      commandText.toLowerCase() === 'appointment'
+    ) {
+      await this.bookingHandler.startBookingFlow(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+      );
+      return;
+    }
+
+    if (buttonOrListId?.startsWith('bdate_')) {
+      await this.bookingHandler.handleDateSelection(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+        buttonOrListId,
+      );
+      return;
+    }
+
+    if (buttonOrListId?.startsWith('btime_')) {
+      await this.bookingHandler.handleTimeSelection(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+        buttonOrListId,
+      );
+      return;
+    }
+
+    // 5. Catalog, Cart, and Checkout Actions
+    if (
+      buttonOrListId === 'btn_catalog' ||
+      buttonOrListId === 'menu_catalog' ||
+      commandText.toLowerCase() === 'catalog'
+    ) {
       await this.catalogHandler.showCatalog(
         businessId,
         conversationId,
@@ -175,7 +219,11 @@ export class ConversationEngineService {
       return;
     }
 
-    if (buttonOrListId === 'btn_cart' || buttonOrListId === 'menu_cart' || commandText.toLowerCase() === 'cart') {
+    if (
+      buttonOrListId === 'btn_cart' ||
+      buttonOrListId === 'menu_cart' ||
+      commandText.toLowerCase() === 'cart'
+    ) {
       await this.cartHandler.showCart(
         businessId,
         conversationId,
@@ -195,7 +243,10 @@ export class ConversationEngineService {
       return;
     }
 
-    if (buttonOrListId === 'btn_checkout' || commandText.toLowerCase() === 'checkout') {
+    if (
+      buttonOrListId === 'btn_checkout' ||
+      commandText.toLowerCase() === 'checkout'
+    ) {
       await this.checkoutHandler.handleCheckout(
         businessId,
         conversationId,
@@ -205,8 +256,12 @@ export class ConversationEngineService {
       return;
     }
 
-    // 5. FAQ Actions
-    if (buttonOrListId === 'btn_faq' || buttonOrListId === 'menu_faq' || commandText.toLowerCase() === 'faq') {
+    // 6. FAQ Actions
+    if (
+      buttonOrListId === 'btn_faq' ||
+      buttonOrListId === 'menu_faq' ||
+      commandText.toLowerCase() === 'faq'
+    ) {
       await this.faqHandler.showFaqList(
         businessId,
         conversationId,
@@ -227,10 +282,20 @@ export class ConversationEngineService {
       return;
     }
 
-    // 6. State Machine Routing
+    // 7. State Machine Routing
     const session = await this.stateService.getState(businessId, customerId);
 
     switch (session.state) {
+      case ConversationState.BOOKING_DATE: {
+        await this.bookingHandler.startBookingFlow(
+          businessId,
+          conversationId,
+          customerId,
+          customerPhone,
+        );
+        break;
+      }
+
       case ConversationState.BROWSING_CATALOG: {
         await this.catalogHandler.showCatalog(
           businessId,
@@ -252,7 +317,6 @@ export class ConversationEngineService {
       }
 
       case ConversationState.MAIN_MENU: {
-        // Try matching text against FAQ
         if (textContent) {
           const faqMatched = await this.faqHandler.searchAndAnswerFaq(
             businessId,
@@ -264,7 +328,6 @@ export class ConversationEngineService {
           if (faqMatched) return;
         }
 
-        // Default fallback in MAIN_MENU: show main menu
         await this.menuHandler.sendMainMenu(
           businessId,
           conversationId,

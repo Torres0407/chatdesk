@@ -10,6 +10,7 @@ import { OutboundMessageModule } from './modules/outbound-message/outbound-messa
 import { ConversationEngineModule } from './modules/conversation-engine/conversation-engine.module';
 import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     ConversationEngineModule,
     CartModule,
     OrdersModule,
+    BookingsModule,
   ],
 })
 export class AppModule {}

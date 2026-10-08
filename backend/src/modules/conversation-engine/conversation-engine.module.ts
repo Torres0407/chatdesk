@@ -7,11 +7,13 @@ import { FaqHandler } from './handlers/faq.handler';
 import { CatalogHandler } from './handlers/catalog.handler';
 import { CartHandler } from './handlers/cart.handler';
 import { CheckoutHandler } from './handlers/checkout.handler';
+import { BookingHandler } from './handlers/booking.handler';
 import { OutboundMessageModule } from '../outbound-message/outbound-message.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { RedisModule } from '../../redis/redis.module';
 import { CartModule } from '../cart/cart.module';
 import { OrdersModule } from '../orders/orders.module';
+import { BookingsModule } from '../bookings/bookings.module';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { OrdersModule } from '../orders/orders.module';
     OutboundMessageModule,
     CartModule,
     OrdersModule,
+    BookingsModule,
   ],
   providers: [
     ConversationStateService,
@@ -30,6 +33,7 @@ import { OrdersModule } from '../orders/orders.module';
     CatalogHandler,
     CartHandler,
     CheckoutHandler,
+    BookingHandler,
   ],
   exports: [
     ConversationStateService,
@@ -40,6 +44,7 @@ import { OrdersModule } from '../orders/orders.module';
     CatalogHandler,
     CartHandler,
     CheckoutHandler,
+    BookingHandler,
   ],
 })
 export class ConversationEngineModule {}

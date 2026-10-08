@@ -11,6 +11,7 @@ describe('ConversationEngineService', () => {
   let mockCatalogHandler: any;
   let mockCartHandler: any;
   let mockCheckoutHandler: any;
+  let mockBookingHandler: any;
 
   beforeEach(() => {
     mockPrisma = {
@@ -48,6 +49,11 @@ describe('ConversationEngineService', () => {
     mockCheckoutHandler = {
       handleCheckout: jest.fn(),
     };
+    mockBookingHandler = {
+      startBookingFlow: jest.fn(),
+      handleDateSelection: jest.fn(),
+      handleTimeSelection: jest.fn(),
+    };
 
     service = new ConversationEngineService(
       mockPrisma,
@@ -58,6 +64,7 @@ describe('ConversationEngineService', () => {
       mockCatalogHandler,
       mockCartHandler,
       mockCheckoutHandler,
+      mockBookingHandler,
     );
   });
 
@@ -156,7 +163,7 @@ describe('ConversationEngineService', () => {
     );
   });
 
-  it('should route to cart handler when add_item is clicked', async () => {
+  it('should route to booking handler when btn_booking is clicked', async () => {
     mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', isOptedOut: false });
     mockPrisma.conversation.findUnique.mockResolvedValue({
       id: 'conv1',
@@ -170,16 +177,42 @@ describe('ConversationEngineService', () => {
       type: 'interactive',
       interactive: {
         type: 'button_reply',
-        button_reply: { id: 'add_prod-123', title: 'Add to Cart' },
+        button_reply: { id: 'btn_booking', title: 'Book Service' },
       },
     });
 
-    expect(mockCartHandler.handleAddToCart).toHaveBeenCalledWith(
+    expect(mockBookingHandler.startBookingFlow).toHaveBeenCalledWith(
       'b1',
       'conv1',
       'c1',
       '+2348012345678',
-      'add_prod-123',
+    );
+  });
+
+  it('should route to booking date selection when bdate_ is clicked', async () => {
+    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', isOptedOut: false });
+    mockPrisma.conversation.findUnique.mockResolvedValue({
+      id: 'conv1',
+      status: ConversationStatus.BOT,
+    });
+
+    await service.processInboundMessage('b1', 'conv1', 'c1', '+2348012345678', {
+      from: '2348012345678',
+      id: 'wamid.123',
+      timestamp: '12345',
+      type: 'interactive',
+      interactive: {
+        type: 'button_reply',
+        button_reply: { id: 'bdate_2026-10-10', title: 'Tomorrow' },
+      },
+    });
+
+    expect(mockBookingHandler.handleDateSelection).toHaveBeenCalledWith(
+      'b1',
+      'conv1',
+      'c1',
+      '+2348012345678',
+      'bdate_2026-10-10',
     );
   });
 });
