@@ -73,8 +73,9 @@ describe('Cross-Tenant Isolation Suite', () => {
     mockOutboundService = { sendText: jest.fn() };
     mockOrderService = { updateOrderStatus: jest.fn() };
     mockBookingService = { cancelBooking: jest.fn(), rescheduleBooking: jest.fn() };
+    const mockEventBus: any = { publishEvent: jest.fn().mockResolvedValue({}) };
 
-    conversationService = new ConversationManagementService(mockPrisma, mockOutboundService);
+    conversationService = new ConversationManagementService(mockPrisma, mockOutboundService, mockEventBus);
     ordersController = new OrdersController(mockOrderService, mockPrisma);
     bookingsController = new BookingsController(mockBookingService, mockPrisma);
     catalogController = new CatalogController(mockPrisma);
