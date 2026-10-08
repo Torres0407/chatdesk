@@ -4,6 +4,9 @@ import { ConversationStateService } from './conversation-state.service';
 import { GlobalCommandHandler } from '../handlers/global-command.handler';
 import { MenuHandler } from '../handlers/menu.handler';
 import { FaqHandler } from '../handlers/faq.handler';
+import { CatalogHandler } from '../handlers/catalog.handler';
+import { CartHandler } from '../handlers/cart.handler';
+import { CheckoutHandler } from '../handlers/checkout.handler';
 import { ConversationState } from '../constants/conversation-state.enum';
 import { ConversationStatus } from '@prisma/client';
 import { MetaInboundMessage } from '../../meta-webhook/dto/meta-webhook.dto';
@@ -18,6 +21,9 @@ export class ConversationEngineService {
     private readonly globalCommandHandler: GlobalCommandHandler,
     private readonly menuHandler: MenuHandler,
     private readonly faqHandler: FaqHandler,
+    private readonly catalogHandler: CatalogHandler,
+    private readonly cartHandler: CartHandler,
+    private readonly checkoutHandler: CheckoutHandler,
   ) {}
 
   async processInboundMessage(
@@ -136,8 +142,71 @@ export class ConversationEngineService {
       return;
     }
 
-    // 4. Check Interactive ID Routing (FAQ, Catalog, Booking)
-    if (buttonOrListId === 'btn_faq' || buttonOrListId === 'menu_faq') {
+    // 4. Catalog, Cart, and Checkout Actions
+    if (buttonOrListId === 'btn_catalog' || buttonOrListId === 'menu_catalog' || commandText.toLowerCase() === 'catalog') {
+      await this.catalogHandler.showCatalog(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+      );
+      return;
+    }
+
+    if (buttonOrListId?.startsWith('prod_')) {
+      await this.catalogHandler.showProductDetails(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+        buttonOrListId,
+      );
+      return;
+    }
+
+    if (buttonOrListId?.startsWith('add_')) {
+      await this.cartHandler.handleAddToCart(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+        buttonOrListId,
+      );
+      return;
+    }
+
+    if (buttonOrListId === 'btn_cart' || buttonOrListId === 'menu_cart' || commandText.toLowerCase() === 'cart') {
+      await this.cartHandler.showCart(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+      );
+      return;
+    }
+
+    if (buttonOrListId === 'btn_clear_cart') {
+      await this.cartHandler.handleClearCart(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+      );
+      return;
+    }
+
+    if (buttonOrListId === 'btn_checkout' || commandText.toLowerCase() === 'checkout') {
+      await this.checkoutHandler.handleCheckout(
+        businessId,
+        conversationId,
+        customerId,
+        customerPhone,
+      );
+      return;
+    }
+
+    // 5. FAQ Actions
+    if (buttonOrListId === 'btn_faq' || buttonOrListId === 'menu_faq' || commandText.toLowerCase() === 'faq') {
       await this.faqHandler.showFaqList(
         businessId,
         conversationId,
@@ -158,10 +227,30 @@ export class ConversationEngineService {
       return;
     }
 
-    // 5. State Machine Routing
+    // 6. State Machine Routing
     const session = await this.stateService.getState(businessId, customerId);
 
     switch (session.state) {
+      case ConversationState.BROWSING_CATALOG: {
+        await this.catalogHandler.showCatalog(
+          businessId,
+          conversationId,
+          customerId,
+          customerPhone,
+        );
+        break;
+      }
+
+      case ConversationState.CART: {
+        await this.cartHandler.showCart(
+          businessId,
+          conversationId,
+          customerId,
+          customerPhone,
+        );
+        break;
+      }
+
       case ConversationState.MAIN_MENU: {
         // Try matching text against FAQ
         if (textContent) {
@@ -186,7 +275,6 @@ export class ConversationEngineService {
       }
 
       default: {
-        // Fallback to Main Menu
         await this.menuHandler.sendMainMenu(
           businessId,
           conversationId,

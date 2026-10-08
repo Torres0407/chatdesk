@@ -8,6 +8,8 @@ import { HealthModule } from './health/health.module';
 import { MetaWebhookModule } from './modules/meta-webhook/meta-webhook.module';
 import { OutboundMessageModule } from './modules/outbound-message/outbound-message.module';
 import { ConversationEngineModule } from './modules/conversation-engine/conversation-engine.module';
+import { CartModule } from './modules/cart/cart.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { ConversationEngineModule } from './modules/conversation-engine/conversa
     MetaWebhookModule,
     OutboundMessageModule,
     ConversationEngineModule,
+    CartModule,
+    OrdersModule,
   ],
 })
 export class AppModule {}

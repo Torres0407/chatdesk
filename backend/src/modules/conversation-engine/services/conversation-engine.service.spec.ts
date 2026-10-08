@@ -8,6 +8,9 @@ describe('ConversationEngineService', () => {
   let mockGlobalCommandHandler: any;
   let mockMenuHandler: any;
   let mockFaqHandler: any;
+  let mockCatalogHandler: any;
+  let mockCartHandler: any;
+  let mockCheckoutHandler: any;
 
   beforeEach(() => {
     mockPrisma = {
@@ -33,6 +36,18 @@ describe('ConversationEngineService', () => {
       handleFaqSelection: jest.fn(),
       searchAndAnswerFaq: jest.fn().mockResolvedValue(false),
     };
+    mockCatalogHandler = {
+      showCatalog: jest.fn(),
+      showProductDetails: jest.fn(),
+    };
+    mockCartHandler = {
+      showCart: jest.fn(),
+      handleAddToCart: jest.fn(),
+      handleClearCart: jest.fn(),
+    };
+    mockCheckoutHandler = {
+      handleCheckout: jest.fn(),
+    };
 
     service = new ConversationEngineService(
       mockPrisma,
@@ -40,6 +55,9 @@ describe('ConversationEngineService', () => {
       mockGlobalCommandHandler,
       mockMenuHandler,
       mockFaqHandler,
+      mockCatalogHandler,
+      mockCartHandler,
+      mockCheckoutHandler,
     );
   });
 
@@ -109,6 +127,59 @@ describe('ConversationEngineService', () => {
       'conv1',
       'c1',
       '+2348012345678',
+    );
+  });
+
+  it('should route to catalog handler when btn_catalog is clicked', async () => {
+    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', isOptedOut: false });
+    mockPrisma.conversation.findUnique.mockResolvedValue({
+      id: 'conv1',
+      status: ConversationStatus.BOT,
+    });
+
+    await service.processInboundMessage('b1', 'conv1', 'c1', '+2348012345678', {
+      from: '2348012345678',
+      id: 'wamid.123',
+      timestamp: '12345',
+      type: 'interactive',
+      interactive: {
+        type: 'button_reply',
+        button_reply: { id: 'btn_catalog', title: 'Catalog' },
+      },
+    });
+
+    expect(mockCatalogHandler.showCatalog).toHaveBeenCalledWith(
+      'b1',
+      'conv1',
+      'c1',
+      '+2348012345678',
+    );
+  });
+
+  it('should route to cart handler when add_item is clicked', async () => {
+    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', isOptedOut: false });
+    mockPrisma.conversation.findUnique.mockResolvedValue({
+      id: 'conv1',
+      status: ConversationStatus.BOT,
+    });
+
+    await service.processInboundMessage('b1', 'conv1', 'c1', '+2348012345678', {
+      from: '2348012345678',
+      id: 'wamid.123',
+      timestamp: '12345',
+      type: 'interactive',
+      interactive: {
+        type: 'button_reply',
+        button_reply: { id: 'add_prod-123', title: 'Add to Cart' },
+      },
+    });
+
+    expect(mockCartHandler.handleAddToCart).toHaveBeenCalledWith(
+      'b1',
+      'conv1',
+      'c1',
+      '+2348012345678',
+      'add_prod-123',
     );
   });
 });
