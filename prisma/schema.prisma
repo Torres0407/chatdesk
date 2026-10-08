@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StaffRole {
+  OWNER
+  STAFF
+}
+
+enum ConversationStatus {
+  BOT
+  HUMAN_HANDLING
+  RESOLVED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  INTERACTIVE_BUTTON
+  INTERACTIVE_LIST
+  IMAGE
+  TEMPLATE
+  SYSTEM
+}
+
+enum MessageStatus {
+  RECEIVED
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PREPARING
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model Business {
+  id                  String            @id @default(cuid())
+  name                String
+  phoneNumberId       String            @unique // Meta WhatsApp Phone Number ID
+  wabaId              String?           // WhatsApp Business Account ID
+  accessToken         String?           // Meta Graph API System User Token
+  webhookVerifyToken  String?           // Custom per-tenant or fallback global
+  currency            String            @default("NGN")
+  timezone            String            @default("Africa/Lagos")
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  staffUsers          StaffUser[]
+  customers           Customer[]
+  conversations       Conversation[]
+  messages            Message[]
+  products            Product[]
+  orders              Order[]
+  bookings            Booking[]
+  faqs                Faq[]
+  settings            BusinessSettings?
+  optOuts             OptOutRecord[]
+  inboundIdempotency  InboundIdempotency[]
+
+  @@index([phoneNumberId])
+}
+
+model BusinessSettings {
+  id                        String    @id @default(cuid())
+  businessId                String    @unique
+  business                  Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  welcomeMessage            String    @default("Welcome to our business! How can we assist you today?")
+  catalogEnabled            Boolean   @default(true)
+  bookingsEnabled           Boolean   @default(true)
+  faqEnabled                Boolean   @default(true)
+  aiFaqEnabled              Boolean   @default(false)
+  operatingHours            Json?     // e.g. { "monday": {"open": "09:00", "close": "18:00"} }
+  handoffNotificationEmail  String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
+
+model StaffUser {
+  id               String       @id @default(cuid())
+  businessId       String
+  business         Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  email            String       @unique
+  passwordHash     String
+  name             String
+  role             StaffRole    @default(STAFF)
+  refreshTokenHash String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  assignedConversations Conversation[] @relation("AssignedStaff")
+  sentMessages          Message[]      @relation("StaffSentMessages")
+
+  @@index([businessId])
+  @@index([email])
+}
+
+model Customer {
+  id            String         @id @default(cuid())
+  businessId    String
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phoneNumber   String         // E.164 formatted string
+  name          String?
+  isOptedOut    Boolean        @default(false)
+  optedOutAt    DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  conversations Conversation[]
+  orders        Order[]
+  bookings      Booking[]
+
+  @@unique([businessId, phoneNumber])
+  @@index([businessId, phoneNumber])
+}
+
+model Conversation {
+  id                    String             @id @default(cuid())
+  businessId            String
+  business              Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId            String
+  customer              Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status                ConversationStatus @default(BOT)
+  assignedStaffId       String?
+  assignedStaff         StaffUser?         @relation("AssignedStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  lastCustomerMessageAt DateTime?
+  lastBotMessageAt      DateTime?
+  windowExpiresAt       DateTime?          // Meta 24-hour customer care window expiration
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  messages              Message[]
+  orders                Order[]
+  bookings              Booking[]
+
+  @@index([businessId, status])
+  @@index([customerId])
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  businessId     String
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  waMessageId    String?          @unique // Meta WhatsApp message id (wamid.xxx)
+  direction      MessageDirection
+  type           MessageType      @default(TEXT)
+  content        Json             // Typed message payload (text, button selection, interactive payload, media url)
+  status         MessageStatus    @default(RECEIVED)
+  staffUserId    String?
+  staffUser      StaffUser?       @relation("StaffSentMessages", fields: [staffUserId], references: [id], onDelete: SetNull)
+  rawPayload     Json?            // Encrypted/sanitized raw webhook payload for debugging if needed
+  createdAt      DateTime         @default(now())
+
+  @@index([businessId, conversationId])
+  @@index([waMessageId])
+}
+
+model InboundIdempotency {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  waMessageId String
+  processedAt DateTime @default(now())
+
+  @@unique([businessId, waMessageId])
+  @@index([waMessageId])
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  businessId  String
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Decimal     @db.Decimal(12, 2)
+  currency    String      @default("NGN")
+  sku         String?
+  imageUrl    String?
+  category    String?
+  isActive    Boolean     @default(true) // Disable instead of delete
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orderItems  OrderItem[]
+
+  @@index([businessId, isActive])
+  @@index([businessId, category])
+}
+
+model Order {
+  id               String       @id @default(cuid())
+  businessId       String
+  business         Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  conversationId   String?
+  conversation     Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  status           OrderStatus  @default(PENDING)
+  totalAmount      Decimal      @db.Decimal(12, 2)
+  currency         String       @default("NGN")
+  paymentReference String?      @unique
+  paymentStatus    String?      // e.g. "unpaid", "success", "failed"
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  items            OrderItem[]
+
+  @@index([businessId, status])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name       String
+  unitPrice  Decimal  @db.Decimal(12, 2)
+  quantity   Int      @default(1)
+  totalPrice Decimal  @db.Decimal(12, 2)
+
+  @@index([orderId])
+}
+
+model Booking {
+  id             String        @id @default(cuid())
+  businessId     String
+  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  serviceName    String
+  startTime      DateTime
+  endTime        DateTime
+  status         BookingStatus @default(PENDING)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Double booking prevention: A business cannot have two non-cancelled overlapping bookings for the same slot.
+  // We place a compound unique constraint on active time slots or validate with DB index / transactions.
+  @@index([businessId, startTime, endTime, status])
+  @@index([customerId])
+}
+
+model Faq {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  question   String
+  answer     String
+  keywords   String[] @default([])
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([businessId, isActive])
+}
+
+model OptOutRecord {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phoneNumber String
+  reason      String?  @default("STOP")
+  createdAt   DateTime @default(now())
+
+  @@unique([businessId, phoneNumber])
+  @@index([businessId, phoneNumber])
+}

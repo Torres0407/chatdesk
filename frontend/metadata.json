@@ -1,0 +1,6 @@
+{
+  "name": "ChatDesk WhatsApp Business Bot Staff Dashboard",
+  "description": "Responsive staff dashboard for ChatDesk WhatsApp business bot: manage conversations, orders, bookings, catalog, and bot automation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,43 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "waba_id_123456",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "2348000000000",
+              "phone_number_id": "phone_num_id_123"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Jane Doe"
+                },
+                "wa_id": "2348012345678"
+              }
+            ],
+            "messages": [
+              {
+                "from": "2348012345678",
+                "id": "wamid.HBgLMjM0ODAxMjM0NTY3OBUCABEYEjExMjIzMzQ0NTU2NwA=",
+                "timestamp": "1728424830",
+                "type": "interactive",
+                "interactive": {
+                  "type": "button_reply",
+                  "button_reply": {
+                    "id": "btn_browse_catalog",
+                    "title": "🛍️ Browse Products"
+                  }
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}
