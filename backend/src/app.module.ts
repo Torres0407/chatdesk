@@ -12,6 +12,11 @@ import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
+import { FaqsModule } from './modules/faqs/faqs.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -41,6 +46,11 @@ import { PaymentsModule } from './modules/payments/payments.module';
     OrdersModule,
     BookingsModule,
     PaymentsModule,
+    AuthModule,
+    ConversationsModule,
+    CatalogModule,
+    FaqsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}
